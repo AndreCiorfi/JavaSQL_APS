@@ -1,0 +1,91 @@
+package EstudoAPS;
+
+import javax.swing.*;
+import java.awt.event.*;
+import java.sql.*;
+
+public class Telaloginzika extends JFrame {
+	
+	
+	public static void main(String args[]) {
+		new Telaloginzika();
+	}
+	
+	JTextField TxCampousuario;
+	JPasswordField passCampoSenha;
+	JButton btEntrar;
+	
+	
+
+	public void actionPerformed(ActionEvent e) {
+		String usuario, senha;
+		
+		if (e.getSource() == btEntrar){
+			usuario = TxCampousuario.getText();
+			 senha = passCampoSenha.getText(); 
+			 if(validarlogin(usuario,senha)) {
+					JOptionPane.showMessageDialog(null, "Login bem-sucedido!");
+					dispose();
+					estudoaps telainicial = new estudoaps(usuario);
+				}
+			 else {
+		            JOptionPane.showMessageDialog(null, "Usuário ou senha inválidos");
+		        }
+		}
+		
+		
+		
+	
+	}
+
+	public Telaloginzika() {
+		setTitle("Login - Registre-se!");
+		setSize(400, 300);
+		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		setLayout(null);
+
+		JLabel LUsuario = new JLabel("Usuário:");
+		LUsuario.setBounds(30, 30, 80, 25);
+		add(LUsuario);
+
+		TxCampousuario = new JTextField();
+		TxCampousuario.setBounds(100, 30, 150, 25);
+		add(TxCampousuario);
+
+		JLabel Lsenha = new JLabel("Senha: ");
+		Lsenha.setBounds(30, 70, 80, 25);
+		add(Lsenha);
+
+		passCampoSenha = new JPasswordField();
+		passCampoSenha.setBounds(100, 70, 150, 25);
+		add(passCampoSenha);
+
+		btEntrar = new JButton("Entrar");
+		btEntrar.setBounds(100, 110, 100, 30);
+		add(btEntrar);
+		
+		setLocationRelativeTo(null); 
+        setVisible(true);
+	}
+	
+	private boolean validarlogin(String login, String senha) {
+		String sql = "SELECT * FROM usuarios WHERE login = ? AND senha = ?";
+		try(Connection conn = ConexaoBD.conectar(); PreparedStatement stmt = conn.prepareStatement(sql)){
+			stmt.setString(1, login);
+            stmt.setString(2, senha);
+            
+            ResultSet rs = stmt.executeQuery();
+            return rs.next();
+		}
+		catch(SQLException e) {
+			JOptionPane.showMessageDialog(null, "ERRO");
+			e.printStackTrace();
+            return false;
+		}
+		
+	}
+	
+	
+
+
+}
