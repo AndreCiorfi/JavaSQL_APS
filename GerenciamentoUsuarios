@@ -1,0 +1,106 @@
+package EstudoAPS;
+import javax.swing.*; 
+import javax.swing.table.*;
+import java.awt.event.*;
+import java.awt.*;
+import java.util.Vector;
+import java.sql.*;
+
+public class TelaGerenciamentoUsuarios extends JFrame {
+	
+	private JTable TBusuarios;
+	private DefaultTableModel modelo;
+	private JButton btadd, btrem, btupd;
+	
+	public TelaGerenciamentoUsuarios() {
+		setTitle("Gerenciamento de Usuários");
+		setSize(500,400);
+		setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        setLayout(new BorderLayout());
+        
+       modelo = new DefaultTableModel(new String[] {"Usuario", "Permissão"}, 0);
+       TBusuarios = new JTable(modelo);
+       JScrollPane scroll = new JScrollPane(TBusuarios);
+       add(scroll, BorderLayout.CENTER);
+       
+       JPanel botoes = new JPanel();
+       btadd = new JButton("Adicionar Usuario");
+       btrem = new JButton("Remover Usuario");
+       btupd = new JButton("Atualizar Lista");
+       
+       botoes.add(btadd);
+       botoes.add(btrem);
+       botoes.add(btupd);
+       add(botoes, BorderLayout.SOUTH);
+       
+       carregarUsuarios();
+       
+       btupd.addActionListener(e -> carregarUsuarios());
+       btupd.addActionListener(e -> {
+       String novousuario = JOptionPane.showInputDialog(this, "Digite o nome do novo usuario");
+       String permissao = JOptionPane.showInputDialog(this, "Digite a permissão do novo usuario");
+       
+       if (novousuario != null && permissao != null) {
+           adicionarUsuario(novousuario, permissao);
+           carregarUsuarios();
+       }
+       
+       });
+       btrem.addActionListener(e -> {
+    	   int row = TBusuarios.getSelectedRow();
+    	   
+    	   if(row >= 0) {
+    		   String usuario = modelo.getValueAt(row, 0).toString();
+    		   removerUsuario(usuario);
+    		   carregarUsuarios();
+   
+    	   }
+    	   else {
+    		   JOptionPane.showMessageDialog(this, "Selecione um usuário para remover.");
+    	   }
+       });
+        
+
+	}
+
+
+private void carregarUsuarios() {
+	modelo.setRowCount(0);
+	try (Connection conn = ConexaoBD.conectar();
+            Statement stmt = conn.createStatement();
+            ResultSet rs = stmt.executeQuery("SELECT nome_usuario, permissao FROM usuarios")) {
+		while (rs.next()) {
+			String nome = rs.getString("nome_usuario");
+			String permissao = rs.getString("permissao");
+			modelo.addRow(new Object[]{nome, permissao});
+		}
+	}
+	catch(SQLException e) {
+        JOptionPane.showMessageDialog(this, "Erro ao carregar usuários: " + e.getMessage());
+
+		}
+	}
+private void adicionarUsuario(String nome, String permissao) {
+	try (Connection conn = ConexaoBD.conectar();
+            PreparedStatement stmt = conn.prepareStatement("INSERT INTO usuarios (nome_usuario, permissao) VALUES (?, ?)")) {
+		stmt.setString(1, nome);
+		stmt.setString(2, permissao);
+		stmt.executeUpdate();
+	}catch(SQLException e) {
+		JOptionPane.showMessageDialog(this, "Erro ao adicionar usuário: " + e.getMessage());
+	}
+}
+private void removerUsuario(String nome) {
+	try (Connection conn = ConexaoBD.conectar();
+            PreparedStatement stmt = conn.prepareStatement("DELETE FROM usuarios WHERE nome_usuario = ?")){
+		stmt.setString(1, nome);
+		stmt.executeUpdate();
+	}catch(SQLException e){
+        JOptionPane.showMessageDialog(this, "Erro ao remover usuário: " + e.getMessage());
+
+	}
+}
+
+ 
+}
