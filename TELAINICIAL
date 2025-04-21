@@ -1,0 +1,84 @@
+package EstudoAPS;
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+
+   
+public class estudoaps extends JFrame implements ActionListener {
+	
+	public static void main(String args[]) {
+		new estudoaps("root").setVisible(true);
+	}
+	JButton B1, B2, BGerenciarUsuarios;
+	JTextField Tx1, Tx2;
+	JLabel L1, L2, L3, L4;
+	private String usuarioLogado;
+	
+	
+	public void actionPerformed(ActionEvent e) {
+		double num;
+		if (e.getSource() == B2){
+			System.exit(0);
+		}
+		else {
+			num = Double.parseDouble(Tx1.getText()) + Double.parseDouble(Tx2.getText());
+			L3.setText(Double.toString(num));
+		}
+	
+	}
+	public estudoaps(String usuarioLogado) {
+		
+		this.usuarioLogado = usuarioLogado;
+		
+		
+		setTitle("Banco de Dados - Bem-vindo " + usuarioLogado);
+		setSize(400, 300);
+		setLocation(100, 100);
+		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		
+		L1 = new JLabel("Banco de Dados");
+		L2 = new JLabel("Status:");
+		L3 = new JLabel("");
+		L4 = new JLabel("Informações da Tabela:");
+		Tx1 = new JTextField("Digite o nome do banco");
+		Tx2 = new JTextField("Digite o nome da tabela");
+		B1 = new JButton("Verificar"); 
+		B2 = new JButton("Sair");
+		
+		L1.setBounds(30, 20, 200, 25);
+		L2.setBounds(30, 160, 100, 25);
+        L3.setBounds(130, 140, 200, 25);
+        L4.setBounds(200, 20, 200, 25);
+        Tx1.setBounds(30, 50, 150, 25);
+        Tx2.setBounds(200, 50, 150, 25);
+        B1.setBounds(30, 90, 150, 30);
+        B2.setBounds(200, 90, 150, 30);
+        
+		
+		getContentPane().setLayout(null);
+		getContentPane().add(L1);
+		getContentPane().add(L2);
+		getContentPane().add(L3);
+		getContentPane().add(L4);
+		getContentPane().add(B1);
+		getContentPane().add(B2);
+		getContentPane().add(Tx1);
+		getContentPane().add(Tx2);
+		
+		B1.addActionListener(this);
+        B2.addActionListener(this);
+		
+		if("root".equalsIgnoreCase(usuarioLogado)) {
+			BGerenciarUsuarios = new JButton("Gerenciar Usuários");
+			BGerenciarUsuarios.setBounds(30, 200, 200, 25);
+			BGerenciarUsuarios.addActionListener(e -> {
+                new TelaGerenciamentoUsuarios().setVisible(true);});
+            add(BGerenciarUsuarios);
+		}
+		
+	}
+	
+	
+
+}
+
