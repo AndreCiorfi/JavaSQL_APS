@@ -1,0 +1,74 @@
+package EstudoAPS;
+
+import javax.swing.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+
+public class TelaComparacao extends JFrame implements ActionListener {
+	
+	private JTextField txcampoMes1, txcampoMes2, txcampoColuna;
+	private JButton btComparar;
+	private JTextArea txaarealresultados;
+	
+	public TelaComparacao() {
+		
+		setTitle("Comparar Dados da Doença");
+		setSize(500, 450);
+		setLocationRelativeTo(null);
+		setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+		setLayout(null);
+		
+		JLabel L1 = new JLabel("Mês 1: ");
+		L1.setBounds(100, 30, 150, 25);
+		add(L1);
+		
+		txcampoMes1 = new JTextField();
+		txcampoMes1.setBounds(100, 30, 150, 25);
+		add(txcampoMes1);
+		
+		JLabel L2 = new JLabel("Mês 2: ");
+		L2.setBounds(30, 70, 80, 25);
+		 add(L2);
+		 
+		 txcampoMes2 = new JTextField();
+		 txcampoMes2.setBounds(100, 70, 150, 25);
+		 add(txcampoMes2);
+		 
+		 JLabel L3 = new JLabel("Coluna (opcional): ");
+		 L3.setBounds(30, 110, 120, 25);
+		 add(L3);
+		 
+		 txcampoColuna = new JTextField();
+		 txcampoColuna.setBounds(160, 110, 150, 25);
+		 add(txcampoColuna);
+		 
+		 btComparar = new JButton("Comparar");
+		 btComparar.setBounds(330, 70, 120, 30);
+		 btComparar.addActionListener(this);
+		 add(btComparar);
+		 
+		 
+		 txaarealresultados = new JTextArea();
+		 txaarealresultados.setBounds(30, 160, 420, 230);
+		 txaarealresultados.setEditable(false);	
+		 add(txaarealresultados);
+	}
+	
+	public void actionPerformed(ActionEvent e) {
+		String mes1 = txcampoMes1.getText().trim();
+        String mes2 = txcampoMes2.getText().trim();
+        String coluna = txcampoColuna.getText().trim();
+        
+        if (coluna.isEmpty()) {
+            coluna = "mortes"; // por padrão compara mortes se não digitar nada
+        }
+        if (!mes1.isEmpty() && !mes2.isEmpty()) {
+            String resultado = ComparaDados.compararMeses(mes1, mes2, coluna);
+            txaarealresultados.setText(resultado);
+        }
+        else {
+            JOptionPane.showMessageDialog(this, "Preencha os dois meses para comparar!", "Erro", JOptionPane.ERROR_MESSAGE);
+        }
+	}
+
+}
