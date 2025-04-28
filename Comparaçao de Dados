@@ -1,0 +1,94 @@
+package EstudoAPS;
+import java.sql.*;
+
+
+public class ComparaDados {
+	
+	private Connection conectar() throws SQLException{
+		String url = "jdbc:sqlite:banco.db";
+		return DriverManager.getConnection(url);
+	}
+	
+	private void letalpormes(String mes) {
+		
+		try(Connection conn = conectar()){
+			
+			String sql = "SELECT SUM(casos) AS totalCasos, SUM(mortes) as totalMortes FROM dados_doenca WHERE mes = ?";
+			PreparedStatement pstmt = conn.prepareStatement(sql);
+            pstmt.setString(1, mes);
+            ResultSet rs = pstmt.executeQuery();
+            
+            if(rs.next()) {
+            	int casos = rs.getInt("totalCasos");
+            	int mortes =rs.getInt("totalMortes");
+            	if(casos > 0) {
+            		double letalidade = (double) mortes/casos * 100;
+            		System.out.printf("Letalidade em %s: %.2f%%\n", mes, letalidade);
+  
+            	}
+            	else {
+            		System.out.println("Nenhum caso registrado no mês de " + mes);
+            	}
+            }
+            rs.close();
+            pstmt.close();
+
+		}
+		catch(SQLException e) {
+			System.out.println("Erro na análise: " + e.getMessage());
+		}
+		
+	}
+	public void comparaCasosMes(String mes1, String mes2) {
+		
+		try(Connection conn = conectar()){
+			String sql = "SELECT mes, SUM(casos) as totalCasos FROM dados_doenca WHERE mes = ?, GROUP BY mes";
+			PreparedStatement pstmt1 = conn.prepareStatement(sql);
+			PreparedStatement pstmt2 = conn.prepareStatement(sql);
+			pstmt1.setString(1, mes1);
+			pstmt2.setString(1, mes2);
+			
+			ResultSet rs1 = pstmt1.executeQuery();
+            ResultSet rs2 = pstmt2.executeQuery();
+            
+            if(rs1.next() && rs2.next()) {
+            	int casosMes1 = rs1.getInt("totalCasos");
+                int casosMes2 = rs2.getInt("totalCasos");
+                
+                System.out.println("Casos em " + mes1 + ": " + casosMes1);
+                System.out.println("Casos em " + mes2 + ": " + casosMes2);
+                
+                if(casosMes1 > 0) {
+                	double variacao = ((double) (casosMes2 - casosMes1) / casosMes1) * 100;
+                	if(variacao < 0) {
+                        System.out.printf("Houve uma redução de %.2f%% nos casos de %s para %s.\n", Math.abs(variacao), mes1, mes2);
+
+                	}
+                	else if(variacao > 0) {
+                        System.out.printf("Houve um aumento de %.2f%% nos casos de %s para %s.\n", variacao, mes1, mes2);
+	
+                	}
+                	else {
+                        System.out.println("O número de casos permaneceu estável entre " + mes1 + " e " + mes2);
+                	}
+                }
+                else {
+                	System.out.println("Não é possível calcular a variação, pois o número de casos em " + mes1 + " é zero.");
+                }
+            }
+            else {
+                System.out.println("Não foram encontrados dados suficientes para comparação.");
+            }
+            rs1.close();
+            rs2.close();
+            pstmt1.close();
+            pstmt2.close();
+            
+		}
+		catch(SQLException e) {
+            System.out.println("Erro na comparação: " + e.getMessage());
+		}
+		
+	}
+
+}
