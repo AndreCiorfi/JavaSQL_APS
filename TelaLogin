@@ -1,91 +1,85 @@
 package EstudoAPS;
 
-import javax.swing.*;
+
+import javax.swing.*; 
 import java.awt.event.*;
 import java.sql.*;
 
-public class Telaloginzika extends JFrame {
-	
-	
-	public static void main(String args[]) {
-		new Telaloginzika();
-	}
-	
-	JTextField TxCampousuario;
-	JPasswordField passCampoSenha;
-	JButton btEntrar;
-	
-	
+public class Telaloginzika extends JFrame implements ActionListener {
 
-	public void actionPerformed(ActionEvent e) {
-		String usuario, senha;
-		
-		if (e.getSource() == btEntrar){
-			usuario = TxCampousuario.getText();
-			 senha = passCampoSenha.getText(); 
-			 if(validarlogin(usuario,senha)) {
-					JOptionPane.showMessageDialog(null, "Login bem-sucedido!");
-					dispose();
-					estudoaps telainicial = new estudoaps(usuario);
-				}
-			 else {
-		            JOptionPane.showMessageDialog(null, "Usuário ou senha inválidos");
-		        }
-		}
-		
-		
-		
-	
-	}
+    JTextField TxCampousuario;
+    JPasswordField passCampoSenha;
+    JButton btEntrar;
 
-	public Telaloginzika() {
-		setTitle("Login - Registre-se!");
-		setSize(400, 300);
-		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		setLayout(null);
+    public static void main(String[] args) {
+        new Telaloginzika();
+    }
 
-		JLabel LUsuario = new JLabel("Usuário:");
-		LUsuario.setBounds(30, 30, 80, 25);
-		add(LUsuario);
+    public Telaloginzika() {
+        setTitle("Login - Registre-se!");
+        setSize(400, 300);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLayout(null);
 
-		TxCampousuario = new JTextField();
-		TxCampousuario.setBounds(100, 30, 150, 25);
-		add(TxCampousuario);
+        JLabel LUsuario = new JLabel("Usuário:");
+        LUsuario.setBounds(30, 30, 80, 25);
+        add(LUsuario);
 
-		JLabel Lsenha = new JLabel("Senha: ");
-		Lsenha.setBounds(30, 70, 80, 25);
-		add(Lsenha);
+        TxCampousuario = new JTextField();
+        TxCampousuario.setBounds(100, 30, 150, 25);
+        add(TxCampousuario);
 
-		passCampoSenha = new JPasswordField();
-		passCampoSenha.setBounds(100, 70, 150, 25);
-		add(passCampoSenha);
+        JLabel Lsenha = new JLabel("Senha:");
+        Lsenha.setBounds(30, 70, 80, 25);
+        add(Lsenha);
 
-		btEntrar = new JButton("Entrar");
-		btEntrar.setBounds(100, 110, 100, 30);
-		add(btEntrar);
-		
-		setLocationRelativeTo(null); 
+        passCampoSenha = new JPasswordField();
+        passCampoSenha.setBounds(100, 70, 150, 25);
+        add(passCampoSenha);
+
+        btEntrar = new JButton("Entrar");
+        btEntrar.setBounds(100, 110, 100, 30);
+        btEntrar.addActionListener(this);
+        add(btEntrar);
+
+        setLocationRelativeTo(null);
         setVisible(true);
-	}
-	
-	private boolean validarlogin(String login, String senha) {
-		String sql = "SELECT * FROM usuarios WHERE login = ? AND senha = ?";
-		try(Connection conn = ConexaoBD.conectar(); PreparedStatement stmt = conn.prepareStatement(sql)){
-			stmt.setString(1, login);
-            stmt.setString(2, senha);
+    }
+
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        if (e.getSource() == btEntrar) {
+            String usuario = TxCampousuario.getText();
+            String senha = new String(passCampoSenha.getPassword());
+            if (validarlogin(usuario, senha)) {
+                JOptionPane.showMessageDialog(null, "Login bem-sucedido!");
+                dispose();
+                new estudoaps(usuario).setVisible(true);
+            } else {
+                JOptionPane.showMessageDialog(null, "Usuário ou senha inválidos");
+            }
+        }
+    }
+
+    private boolean validarlogin(String login, String senha) {
+        String sql = "SELECT * FROM usuarios WHERE nome_usuario = ? AND senha = ?";
+        try (Connection conn = ConexaoBD.conectar()) {
             
+            if (conn == null) {
+                JOptionPane.showMessageDialog(null, "Falha ao conectar ao banco de dados!");
+                return false;
+            }
+
+            PreparedStatement stmt = conn.prepareStatement(sql);
+            stmt.setString(1, login);
+            stmt.setString(2, senha);
             ResultSet rs = stmt.executeQuery();
             return rs.next();
-		}
-		catch(SQLException e) {
-			JOptionPane.showMessageDialog(null, "ERRO");
-			e.printStackTrace();
+
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(null, "Erro ao acessar o banco de dados!");
+            e.printStackTrace();
             return false;
-		}
-		
-	}
-	
-	
-
-
-}
+        }
+    }
+ }
