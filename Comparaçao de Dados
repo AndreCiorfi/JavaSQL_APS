@@ -1,61 +1,102 @@
 package EstudoAPS;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import javax.swing.*; 
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.sql.*;
 
-public class ComparaDados {
-    public static String compararMeses(String mes1, String mes2, String coluna) {
-        StringBuilder resultado = new StringBuilder();
-        try (Connection conn = ConexaoBD.conectar()) {
-            String sql = "SELECT mes, casos, vacinados, " + coluna + " FROM doencas WHERE mes = ? OR mes = ?";
-            PreparedStatement pstmt = conn.prepareStatement(sql);
-            pstmt.setString(1, mes1);
-            pstmt.setString(2, mes2);
-            ResultSet rs = pstmt.executeQuery();
+public class TelaComparacao extends JFrame implements ActionListener {
 
-            int casosMes1 = -1, casosMes2 = -1;
-            int vacMes1 = -1, vacMes2 = -1;
-            int colunaMes1 = -1, colunaMes2 = -1;
+    private JTextField txSemana1, txSemana2;
+    private JButton btComparar;
+    private JTextArea resultadoArea;
 
-            while (rs.next()) {
-                if (rs.getString("mes").equalsIgnoreCase(mes1)) {
-                    casosMes1 = rs.getInt("casos");
-                    vacMes1 = rs.getInt("vacinados");
-                    colunaMes1 = rs.getInt(coluna);
-                } else if (rs.getString("mes").equalsIgnoreCase(mes2)) {
-                    casosMes2 = rs.getInt("casos");
-                    vacMes2 = rs.getInt("vacinados");
-                    colunaMes2 = rs.getInt(coluna);
-                }
-            }
+    public TelaComparacao() {
+        setTitle("Comparar Semanas de Casos");
+        setSize(500, 400);
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        setLayout(null);
 
-            if (casosMes1 != -1 && casosMes2 != -1) {
-                double variacaoCasos = ((double)(casosMes2 - casosMes1) / casosMes1) * 100;
-                resultado.append(String.format("Variação de casos de %s para %s: %.2f%%\n", mes1, mes2, variacaoCasos));
-            } else {
-                resultado.append("Não há dados suficientes sobre casos.\n");
-            }
+        JLabel labelSemana1 = new JLabel("Semana 1 (SE1 a SE5): ");
+        labelSemana1.setBounds(30, 30, 150, 25);
+        add(labelSemana1);
 
-            if (vacMes1 != -1 && vacMes2 != -1) {
-                double variacaoVacinas = ((double)(vacMes2 - vacMes1) / vacMes1) * 100;
-                resultado.append(String.format("Variação de vacinados de %s para %s: %.2f%%\n", mes1, mes2, variacaoVacinas));
-            } else {
-                resultado.append("Não há dados suficientes sobre vacinados.\n");
-            }
+        txSemana1 = new JTextField();
+        txSemana1.setBounds(180, 30, 100, 25);
+        add(txSemana1);
 
-            if (colunaMes1 != -1 && colunaMes2 != -1) {
-                double variacaoColuna = ((double)(colunaMes2 - colunaMes1) / colunaMes1) * 100;
-                resultado.append(String.format("Variação de '%s' de %s para %s: %.2f%%\n", coluna, mes1, mes2, variacaoColuna));
-            } else {
-                resultado.append("Não há dados suficientes para a coluna '" + coluna + "'.\n");
-            }
+        JLabel labelSemana2 = new JLabel("Semana 2 (SE1 a SE5): ");
+        labelSemana2.setBounds(30, 70, 150, 25);
+        add(labelSemana2);
 
-        } catch (SQLException e) {
-            resultado.append("Erro: ").append(e.getMessage());
+        txSemana2 = new JTextField();
+        txSemana2.setBounds(180, 70, 100, 25);
+        add(txSemana2);
+
+        btComparar = new JButton("Comparar");
+        btComparar.setBounds(300, 50, 120, 30);
+        btComparar.addActionListener(this);
+        add(btComparar);
+
+        resultadoArea = new JTextArea();
+        resultadoArea.setEditable(false);
+        JScrollPane scroll = new JScrollPane(resultadoArea);
+        scroll.setBounds(30, 120, 420, 200);
+        add(scroll);
+    }
+
+    public void actionPerformed(ActionEvent e) {
+        String semana1 = txSemana1.getText().trim();
+        String semana2 = txSemana2.getText().trim();
+
+        if (!semana1.matches("SE[1-5]") || !semana2.matches("SE[1-5]")) {
+            JOptionPane.showMessageDialog(this, "Insira semanas válidas (SE1 a SE5).", "Erro", JOptionPane.ERROR_MESSAGE);
+            return;
         }
 
-        return resultado.toString();
+        try {
+            String url = "jdbc:mysql://localhost:3306/doencas";
+            String user = "root";
+            String password = "mysql";
+
+            Connection conn = DriverManager.getConnection(url, user, password);
+            Statement stmt = conn.createStatement();
+
+            String query = "SELECT id_municipio, id_doenca, " + semana1 + ", " + semana2 + " FROM casos_semanal";
+            ResultSet rs = stmt.executeQuery(query);
+
+            StringBuilder sb = new StringBuilder();
+            sb.append("Comparação entre ").append(semana1).append(" e ").append(semana2).append(":\n\n");
+
+            while (rs.next()) {
+                int municipio = rs.getInt("id_municipio");
+                int doenca = rs.getInt("id_doenca");
+                int valor1 = rs.getInt(semana1);
+                int valor2 = rs.getInt(semana2);
+
+                String resultado;
+                if (valor1 == 0 && valor2 == 0) {
+                    resultado = "Sem dados";
+                } else if (valor1 == 0) {
+                    resultado = "Aumento infinito (sem casos na semana 1)";
+                } else {
+                    double variacao = ((double) (valor2 - valor1) / valor1) * 100;
+                    resultado = String.format("%.2f%% %s", Math.abs(variacao), variacao >= 0 ? "de aumento" : "de redução");
+                }
+
+                sb.append("Município: ").append(municipio)
+                  .append(" | Doença: ").append(doenca)
+                  .append(" | ").append(resultado).append("\n");
+            }
+
+            resultadoArea.setText(sb.toString());
+
+            rs.close();
+            stmt.close();
+            conn.close();
+        } catch (SQLException ex) {
+            JOptionPane.showMessageDialog(this, "Erro ao acessar banco: " + ex.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
+        }
     }
 }
