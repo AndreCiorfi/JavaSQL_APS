@@ -1,55 +1,137 @@
 package EstudoAPS;
+import javax.swing.*;  
+import javax.swing.table.*;
+import java.awt.event.*;
+import java.awt.*;
+import java.util.Vector;
+import java.sql.*;
+
+public class TelaGerenciamentoUsuarios extends JFrame {
+	
+	private JTable TBusuarios;
+	private DefaultTableModel modelo;
+	private JButton btadd, btrem, btupd;
+	
+	public TelaGerenciamentoUsuarios() {
+		setTitle("Gerenciamento de Usuários");
+		setSize(500,400);
+		setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        setLayout(new BorderLayout());
+        
+       modelo = new DefaultTableModel(new String[] {"Usuario", "Permissão"}, 0);
+       TBusuarios = new JTable(modelo);
+       JScrollPane scroll = new JScrollPane(TBusuarios);
+       add(scroll, BorderLayout.CENTER);
+       
+       JPanel botoes = new JPanel();
+       btadd = new JButton("Adicionar Usuario");
+       btrem = new JButton("Remover Usuario");
+       btupd = new JButton("Atualizar Lista");
+       
+       botoes.add(btadd);
+       botoes.add(btrem);
+       botoes.add(btupd);
+       add(botoes, BorderLayout.SOUTH);
+       
+       carregarUsuarios();
+       
+       
+       
+       btupd.addActionListener(e -> carregarUsuarios());
+       
+       
+       btadd.addActionListener(e -> carregarUsuarios());
+       btadd.addActionListener(e -> {
+       String novousuario = JOptionPane.showInputDialog(this, "Digite o nome do novo usuario");
+       String senha = JOptionPane.showInputDialog(this, "Digite a senha do novo usuario", JOptionPane.OK_CANCEL_OPTION);
+       String permissao = JOptionPane.showInputDialog(this, "Digite a permissão do novo usuario");
+       
+       if (novousuario != null && permissao != null) {
+           adicionarUsuario(novousuario, senha, permissao);
+           carregarUsuarios();
+       }
+       
+       });
+       btrem.addActionListener(e -> {
+    	   int row = TBusuarios.getSelectedRow();
+    	   
+    	   if(row >= 0) {
+    		   String usuario = modelo.getValueAt(row, 0).toString();
+    		   removerUsuario(usuario);
+    		   carregarUsuarios();
+   
+    	   }
+    	   else {
+    		   JOptionPane.showMessageDialog(this, "Selecione um usuário para remover.");
+    	   }
+       });
+        
+
+	}
 
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
+private void carregarUsuarios() {
+	modelo.setRowCount(0);
+	try (Connection conn = ConexaoBD.conectar();
+            Statement stmt = conn.createStatement();
+            ResultSet rs = stmt.executeQuery("SELECT nome_usuario, permissao FROM usuarios")) {
+		while (rs.next()) {
+			String nome = rs.getString("nome_usuario");
+			String permissao = rs.getString("permissao");
+			modelo.addRow(new Object[]{nome, permissao});
+		}
+	}
+	catch(SQLException e) {
+        JOptionPane.showMessageDialog(this, "Erro ao carregar usuários: " + e.getMessage());
 
-public class ConexaoBD {
-
-    private static final String URL = "jdbc:mysql://localhost:3306/doencas"; // Nome do seu banco
-    private static final String USUARIO = "root"; // Usuário do MySQL
-    private static final String SENHA = "mysql";  // Senha do MySQL
-
-    public static Connection conectar() {
-        try {
-            // Carrega o driver do MySQL (boa prática, embora opcional desde o JDBC 4)
-            Class.forName("com.mysql.cj.jdbc.Driver");
-			try {
-				Connection conexao = DriverManager.getConnection(URL,USUARIO, SENHA);
-
-				
-			}catch(SQLException e) {
-				System.out.println("Ocorreu um erro ao acessar o banco: "+ e.getMessage());
-			}
-
-            // Tenta estabelecer a conexão
-            return DriverManager.getConnection(URL, USUARIO, SENHA);
-
-        } catch (ClassNotFoundException e) {
-            System.out.println("Driver MySQL não encontrado.");
-            e.printStackTrace();
-            return null;
-
-        } catch (SQLException e) {
-            System.out.println("Erro ao conectar ao banco de dados:");
-            e.printStackTrace();
-            return null;
+		}
+	}
+private void adicionarUsuario(String nome, String senha, String permissao) {
+    try (Connection conn = ConexaoBD.conectar()) {
+        // Insere no banco do sistema
+        String sql = "INSERT INTO usuarios (nome_usuario, senha, permissao) VALUES (?, ?, ?)";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, nome);
+            stmt.setString(2, senha); // Recomendado: criptografar
+            stmt.setString(3, permissao);
+            stmt.executeUpdate();
         }
-    }
 
-    // Método para teste rápido (opcional)
-    public static void main(String[] args) {
-        Connection con = conectar();
-        if (con != null) {
-            System.out.println("✅ Conexão estabelecida com sucesso!");
-            try {
-                con.close();
-            } catch (SQLException e) {
-                e.printStackTrace();
+        // Cria o usuário MySQL e dá permissões
+        try (Statement stmt = conn.createStatement()) {
+            // Cria o usuário MySQL se não existir
+            stmt.executeUpdate("CREATE USER IF NOT EXISTS '" + nome + "'@'localhost' IDENTIFIED BY '" + senha + "'");
+
+            // Define permissões
+            if ("gerente".equalsIgnoreCase(permissao)) {
+                stmt.executeUpdate("GRANT SELECT, INSERT, DELETE ON doencas.* TO '" + nome + "'@'localhost'");
+            } else {
+                stmt.executeUpdate("GRANT SELECT ON doencas.* TO '" + nome + "'@'localhost'");
             }
-        } else {
-            System.out.println("❌ Falha na conexão com o banco.");
+
+            stmt.execute("FLUSH PRIVILEGES");
         }
+
+        JOptionPane.showMessageDialog(this, "Usuário adicionado com sucesso!");
+
+    } catch (SQLException e) {
+        JOptionPane.showMessageDialog(this, "Erro ao adicionar usuário: " + e.getMessage());
     }
+}
+
+private void removerUsuario(String nome) {
+	try (Connection conn = ConexaoBD.conectar();
+            PreparedStatement stmt = conn.prepareStatement("DELETE FROM usuarios WHERE nome_usuario = ?")){
+		stmt.setString(1, nome);
+		stmt.executeUpdate();
+	}catch(SQLException e){
+        JOptionPane.showMessageDialog(this, "Erro ao remover usuário: " + e.getMessage());
+
+	}
+}
+
+
+
+ 
 }
