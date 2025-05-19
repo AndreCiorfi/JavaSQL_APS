@@ -1,5 +1,5 @@
 package EstudoAPS;
-import javax.swing.*; 
+import javax.swing.*;  
 import javax.swing.table.*;
 import java.awt.event.*;
 import java.awt.*;
@@ -36,13 +36,19 @@ public class TelaGerenciamentoUsuarios extends JFrame {
        
        carregarUsuarios();
        
+       
+       
        btupd.addActionListener(e -> carregarUsuarios());
-       btupd.addActionListener(e -> {
+       
+       
+       btadd.addActionListener(e -> carregarUsuarios());
+       btadd.addActionListener(e -> {
        String novousuario = JOptionPane.showInputDialog(this, "Digite o nome do novo usuario");
+       String senha = JOptionPane.showInputDialog(this, "Digite a senha do novo usuario", JOptionPane.OK_CANCEL_OPTION);
        String permissao = JOptionPane.showInputDialog(this, "Digite a permissão do novo usuario");
        
        if (novousuario != null && permissao != null) {
-           adicionarUsuario(novousuario, permissao);
+           adicionarUsuario(novousuario, senha, permissao);
            carregarUsuarios();
        }
        
@@ -81,16 +87,39 @@ private void carregarUsuarios() {
 
 		}
 	}
-private void adicionarUsuario(String nome, String permissao) {
-	try (Connection conn = ConexaoBD.conectar();
-            PreparedStatement stmt = conn.prepareStatement("INSERT INTO usuarios (nome_usuario, permissao) VALUES (?, ?)")) {
-		stmt.setString(1, nome);
-		stmt.setString(2, permissao);
-		stmt.executeUpdate();
-	}catch(SQLException e) {
-		JOptionPane.showMessageDialog(this, "Erro ao adicionar usuário: " + e.getMessage());
-	}
+private void adicionarUsuario(String nome, String senha, String permissao) {
+    try (Connection conn = ConexaoBD.conectar()) {
+        // Insere no banco do sistema
+        String sql = "INSERT INTO usuarios (nome_usuario, senha, permissao) VALUES (?, ?, ?)";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, nome);
+            stmt.setString(2, senha); // Recomendado: criptografar
+            stmt.setString(3, permissao);
+            stmt.executeUpdate();
+        }
+
+        // Cria o usuário MySQL e dá permissões
+        try (Statement stmt = conn.createStatement()) {
+            // Cria o usuário MySQL se não existir
+            stmt.executeUpdate("CREATE USER IF NOT EXISTS '" + nome + "'@'localhost' IDENTIFIED BY '" + senha + "'");
+
+            // Define permissões
+            if ("gerente".equalsIgnoreCase(permissao)) {
+                stmt.executeUpdate("GRANT SELECT, INSERT, DELETE ON doencas.* TO '" + nome + "'@'localhost'");
+            } else {
+                stmt.executeUpdate("GRANT SELECT ON doencas.* TO '" + nome + "'@'localhost'");
+            }
+
+            stmt.execute("FLUSH PRIVILEGES");
+        }
+
+        JOptionPane.showMessageDialog(this, "Usuário adicionado com sucesso!");
+
+    } catch (SQLException e) {
+        JOptionPane.showMessageDialog(this, "Erro ao adicionar usuário: " + e.getMessage());
+    }
 }
+
 private void removerUsuario(String nome) {
 	try (Connection conn = ConexaoBD.conectar();
             PreparedStatement stmt = conn.prepareStatement("DELETE FROM usuarios WHERE nome_usuario = ?")){
@@ -101,6 +130,8 @@ private void removerUsuario(String nome) {
 
 	}
 }
+
+
 
  
 }
