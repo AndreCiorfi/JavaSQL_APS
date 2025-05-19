@@ -1,84 +1,244 @@
 package EstudoAPS;
+
 import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.event.*;
+import java.sql.*;
 
-   
 public class estudoaps extends JFrame implements ActionListener {
-	
-	public static void main(String args[]) {
-		new estudoaps("root").setVisible(true);
-	}
-	JButton B1, B2, BGerenciarUsuarios;
-	JTextField Tx1, Tx2;
-	JLabel L1, L2, L3, L4;
-	private String usuarioLogado;
-	
-	
-	public void actionPerformed(ActionEvent e) {
-		double num;
-		if (e.getSource() == B2){
-			System.exit(0);
-		}
-		else {
-			num = Double.parseDouble(Tx1.getText()) + Double.parseDouble(Tx2.getText());
-			L3.setText(Double.toString(num));
-		}
-	
-	}
-	public estudoaps(String usuarioLogado) {
-		
-		this.usuarioLogado = usuarioLogado;
-		
-		
-		setTitle("Banco de Dados - Bem-vindo " + usuarioLogado);
-		setSize(400, 300);
-		setLocation(100, 100);
-		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		
-		L1 = new JLabel("Banco de Dados");
-		L2 = new JLabel("Status:");
-		L3 = new JLabel("");
-		L4 = new JLabel("Informações da Tabela:");
-		Tx1 = new JTextField("Digite o nome do banco");
-		Tx2 = new JTextField("Digite o nome da tabela");
-		B1 = new JButton("Verificar"); 
-		B2 = new JButton("Sair");
-		
-		L1.setBounds(30, 20, 200, 25);
-		L2.setBounds(30, 160, 100, 25);
+
+    public static void main(String args[]) {
+        new estudoaps("root").setVisible(true);
+    }
+
+    JButton B1, B2, BGerenciarUsuarios;
+    JTextField Tx1, Tx2;
+    JLabel L1, L2, L3, L4;
+    private String usuarioLogado;
+
+    public void actionPerformed(ActionEvent e) {
+        if (e.getSource() == B2) {
+            System.exit(0);
+        } else if (e.getSource() == B1) {
+            String nomeBanco = Tx1.getText().trim();
+            String nomeTabela = Tx2.getText().trim();
+            if (nomeBanco.isEmpty() || nomeTabela.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Informe nome do banco e da tabela.");
+                return;
+            }
+            mostrarTabela(nomeBanco, nomeTabela);
+        }
+    }
+
+    public estudoaps(String usuarioLogado) {
+        this.usuarioLogado = usuarioLogado;
+
+        setTitle("Banco de Dados - Bem-vindo " + usuarioLogado);
+        setSize(400, 300);
+        setLocation(100, 100);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+        L1 = new JLabel("Banco de Dados");
+        L2 = new JLabel("Status:");
+        L3 = new JLabel("");
+        L4 = new JLabel("Informações da Tabela:");
+
+        Tx1 = new JTextField("Digite o nome do banco");
+        Tx2 = new JTextField("Digite o nome da tabela");
+
+        B1 = new JButton("Verificar");
+        B2 = new JButton("Sair");
+
+        L1.setBounds(30, 20, 200, 25);
+        L2.setBounds(30, 160, 100, 25);
         L3.setBounds(130, 140, 200, 25);
         L4.setBounds(200, 20, 200, 25);
         Tx1.setBounds(30, 50, 150, 25);
         Tx2.setBounds(200, 50, 150, 25);
         B1.setBounds(30, 90, 150, 30);
         B2.setBounds(200, 90, 150, 30);
-        
-		
-		getContentPane().setLayout(null);
-		getContentPane().add(L1);
-		getContentPane().add(L2);
-		getContentPane().add(L3);
-		getContentPane().add(L4);
-		getContentPane().add(B1);
-		getContentPane().add(B2);
-		getContentPane().add(Tx1);
-		getContentPane().add(Tx2);
-		
-		B1.addActionListener(this);
+
+        getContentPane().setLayout(null);
+        getContentPane().add(L1);
+        getContentPane().add(L2);
+        getContentPane().add(L3);
+        getContentPane().add(L4);
+        getContentPane().add(B1);
+        getContentPane().add(B2);
+        getContentPane().add(Tx1);
+        getContentPane().add(Tx2);
+
+        B1.addActionListener(this);
         B2.addActionListener(this);
-		
-		if("root".equalsIgnoreCase(usuarioLogado)) {
-			BGerenciarUsuarios = new JButton("Gerenciar Usuários");
-			BGerenciarUsuarios.setBounds(30, 200, 200, 25);
-			BGerenciarUsuarios.addActionListener(e -> {
-                new TelaGerenciamentoUsuarios().setVisible(true);});
+
+        if ("root".equalsIgnoreCase(usuarioLogado)) {
+        	garantirPermissaoRoot();
+            BGerenciarUsuarios = new JButton("Gerenciar Usuários");
+            BGerenciarUsuarios.setBounds(30, 200, 200, 25);
+            BGerenciarUsuarios.addActionListener(e -> {
+                new TelaGerenciamentoUsuarios().setVisible(true);
+            });
             add(BGerenciarUsuarios);
-		}
-		
-	}
-	
-	
+        }
+    }
 
+    private void mostrarTabela(String nomeBanco, String nomeTabela) {
+        JFrame frameTabela = new JFrame("Conteúdo da tabela: " + nomeTabela);
+        frameTabela.setSize(600, 400);
+        frameTabela.setLocationRelativeTo(this);
+        frameTabela.setLayout(new BorderLayout());
+
+        DefaultTableModel modelo = new DefaultTableModel();
+        JTable tabela = new JTable(modelo);
+        JScrollPane scroll = new JScrollPane(tabela);
+        frameTabela.add(scroll, BorderLayout.CENTER);
+
+        String url = "jdbc:mysql://localhost:3306/" + nomeBanco;
+        String user = "root";
+        String password = "mysql";
+
+        try (
+            Connection conn = DriverManager.getConnection(url, user, password);
+            Statement stmt = conn.createStatement();
+            ResultSet rs = stmt.executeQuery("SELECT * FROM " + nomeTabela)
+        ) {
+            ResultSetMetaData rsmd = rs.getMetaData();
+            int colCount = rsmd.getColumnCount();
+
+            for (int i = 1; i <= colCount; i++) {
+                modelo.addColumn(rsmd.getColumnName(i));
+            }
+
+            while (rs.next()) {
+                Object[] linha = new Object[colCount];
+                for (int i = 1; i <= colCount; i++) {
+                    linha[i - 1] = rs.getObject(i);
+                }
+                modelo.addRow(linha);
+            }
+
+            // Apenas o root pode ver os botões de modificação
+            if (usuarioLogado.equalsIgnoreCase("root")) {
+                JPanel painelBotoes = new JPanel();
+
+                JButton btnAdicionar = new JButton("Adicionar");
+                JButton btnRemover = new JButton("Remover");
+
+                painelBotoes.add(btnAdicionar);
+                painelBotoes.add(btnRemover);
+                frameTabela.add(painelBotoes, BorderLayout.SOUTH);
+
+                // Botão de adicionar
+                btnAdicionar.addActionListener(e -> {
+                    try (
+                        Connection connAdd = DriverManager.getConnection(url, user, password)
+                    ) {
+                        int colunas = modelo.getColumnCount();
+                        Object[] valores = new Object[colunas];
+
+                        for (int i = 0; i < colunas; i++) {
+                            String valor = JOptionPane.showInputDialog(frameTabela,
+                                    "Digite o valor para " + modelo.getColumnName(i));
+                            valores[i] = valor;
+                        }
+
+                        StringBuilder query = new StringBuilder("INSERT INTO " + nomeTabela + " VALUES (");
+                        for (int i = 0; i < colunas; i++) {
+                            query.append("?");
+                            if (i < colunas - 1) query.append(",");
+                        }
+                        query.append(")");
+
+                        try (PreparedStatement pst = connAdd.prepareStatement(query.toString())) {
+                            for (int i = 0; i < colunas; i++) {
+                                pst.setString(i + 1, valores[i].toString());
+                            }
+                            pst.executeUpdate();
+                            JOptionPane.showMessageDialog(frameTabela, "Registro adicionado.");
+                            frameTabela.dispose();
+                            mostrarTabela(nomeBanco, nomeTabela); // Recarrega
+                        }
+
+                    } catch (SQLException ex) {
+                        JOptionPane.showMessageDialog(frameTabela, "Erro ao adicionar: " + ex.getMessage());
+                    }
+                });
+
+                // Botão de remover
+                btnRemover.addActionListener(e -> {
+                    int linhaSelecionada = tabela.getSelectedRow();
+                    if (linhaSelecionada >= 0) {
+                        Object id = modelo.getValueAt(linhaSelecionada, 0); // supondo que a 1ª coluna seja chave primária
+
+                        int confirmar = JOptionPane.showConfirmDialog(frameTabela,
+                                "Confirma remover o registro com ID: " + id + "?",
+                                "Confirmar remoção", JOptionPane.YES_NO_OPTION);
+
+                        if (confirmar == JOptionPane.YES_OPTION) {
+                            try (
+                                Connection connRem = DriverManager.getConnection(url, user, password);
+                                PreparedStatement pst = connRem.prepareStatement(
+                                    "DELETE FROM " + nomeTabela + " WHERE " + modelo.getColumnName(0) + " = ?")
+                            ) {
+                                pst.setString(1, id.toString());
+                                pst.executeUpdate();
+                                JOptionPane.showMessageDialog(frameTabela, "Registro removido.");
+                                frameTabela.dispose();
+                                mostrarTabela(nomeBanco, nomeTabela); // Recarrega
+                            } catch (SQLException ex) {
+                                JOptionPane.showMessageDialog(frameTabela, "Erro ao remover: " + ex.getMessage());
+                            }
+                        }
+                    } else {
+                        JOptionPane.showMessageDialog(frameTabela, "Selecione uma linha para remover.");
+                    }
+                });
+            }
+            if (nomeTabela.equalsIgnoreCase("casos_semanal")) {
+                JPanel painelComparacao = new JPanel();
+                JButton btnCompararSemanas = new JButton("Comparar Semanas");
+
+                btnCompararSemanas.addActionListener(ev -> {
+                    new TelaComparacao().setVisible(true);
+                });
+
+                painelComparacao.add(btnCompararSemanas);
+                frameTabela.add(painelComparacao, BorderLayout.NORTH); // coloca no topo
+            }
+
+            frameTabela.setVisible(true);
+
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this, "Erro ao acessar tabela: " + e.getMessage());
+        }
+    }
+
+
+    
+    private String gerarInsertSQL(String nomeTabela, int colunas) {
+        StringBuilder sb = new StringBuilder("INSERT INTO ");
+        sb.append(nomeTabela).append(" VALUES (");
+        for (int i = 0; i < colunas; i++) {
+            sb.append("?");
+            if (i < colunas - 1) sb.append(", ");
+        }
+        sb.append(")");
+        return sb.toString();
+    } 
+            
+        
+    
+    private void garantirPermissaoRoot() {
+        try (Connection conn = ConexaoBD.conectar();
+             Statement stmt = conn.createStatement()) {
+
+            stmt.executeUpdate("GRANT ALL PRIVILEGES ON *.* TO 'root'@'localhost' WITH GRANT OPTION");
+            stmt.execute("FLUSH PRIVILEGES");
+
+            JOptionPane.showMessageDialog(this, "Permissões completas concedidas ao root com sucesso.");
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this, "Erro ao garantir permissões para root: " + e.getMessage());
+        }
+    }
 }
-
