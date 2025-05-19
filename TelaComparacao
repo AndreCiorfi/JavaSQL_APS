@@ -1,74 +1,102 @@
 package EstudoAPS;
 
-import javax.swing.*;
+import javax.swing.*; 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.sql.*;
 
 public class TelaComparacao extends JFrame implements ActionListener {
-	
-	private JTextField txcampoMes1, txcampoMes2, txcampoColuna;
-	private JButton btComparar;
-	private JTextArea txaarealresultados;
-	
-	public TelaComparacao() {
-		
-		setTitle("Comparar Dados da Doença");
-		setSize(500, 450);
-		setLocationRelativeTo(null);
-		setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-		setLayout(null);
-		
-		JLabel L1 = new JLabel("Mês 1: ");
-		L1.setBounds(100, 30, 150, 25);
-		add(L1);
-		
-		txcampoMes1 = new JTextField();
-		txcampoMes1.setBounds(100, 30, 150, 25);
-		add(txcampoMes1);
-		
-		JLabel L2 = new JLabel("Mês 2: ");
-		L2.setBounds(30, 70, 80, 25);
-		 add(L2);
-		 
-		 txcampoMes2 = new JTextField();
-		 txcampoMes2.setBounds(100, 70, 150, 25);
-		 add(txcampoMes2);
-		 
-		 JLabel L3 = new JLabel("Coluna (opcional): ");
-		 L3.setBounds(30, 110, 120, 25);
-		 add(L3);
-		 
-		 txcampoColuna = new JTextField();
-		 txcampoColuna.setBounds(160, 110, 150, 25);
-		 add(txcampoColuna);
-		 
-		 btComparar = new JButton("Comparar");
-		 btComparar.setBounds(330, 70, 120, 30);
-		 btComparar.addActionListener(this);
-		 add(btComparar);
-		 
-		 
-		 txaarealresultados = new JTextArea();
-		 txaarealresultados.setBounds(30, 160, 420, 230);
-		 txaarealresultados.setEditable(false);	
-		 add(txaarealresultados);
-	}
-	
-	public void actionPerformed(ActionEvent e) {
-		String mes1 = txcampoMes1.getText().trim();
-        String mes2 = txcampoMes2.getText().trim();
-        String coluna = txcampoColuna.getText().trim();
-        
-        if (coluna.isEmpty()) {
-            coluna = "mortes"; // por padrão compara mortes se não digitar nada
-        }
-        if (!mes1.isEmpty() && !mes2.isEmpty()) {
-            String resultado = ComparaDados.compararMeses(mes1, mes2, coluna);
-            txaarealresultados.setText(resultado);
-        }
-        else {
-            JOptionPane.showMessageDialog(this, "Preencha os dois meses para comparar!", "Erro", JOptionPane.ERROR_MESSAGE);
-        }
-	}
 
+    private JTextField txSemana1, txSemana2;
+    private JButton btComparar;
+    private JTextArea resultadoArea;
+
+    public TelaComparacao() {
+        setTitle("Comparar Semanas de Casos");
+        setSize(500, 400);
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        setLayout(null);
+
+        JLabel labelSemana1 = new JLabel("Semana 1 (SE1 a SE5): ");
+        labelSemana1.setBounds(30, 30, 150, 25);
+        add(labelSemana1);
+
+        txSemana1 = new JTextField();
+        txSemana1.setBounds(180, 30, 100, 25);
+        add(txSemana1);
+
+        JLabel labelSemana2 = new JLabel("Semana 2 (SE1 a SE5): ");
+        labelSemana2.setBounds(30, 70, 150, 25);
+        add(labelSemana2);
+
+        txSemana2 = new JTextField();
+        txSemana2.setBounds(180, 70, 100, 25);
+        add(txSemana2);
+
+        btComparar = new JButton("Comparar");
+        btComparar.setBounds(300, 50, 120, 30);
+        btComparar.addActionListener(this);
+        add(btComparar);
+
+        resultadoArea = new JTextArea();
+        resultadoArea.setEditable(false);
+        JScrollPane scroll = new JScrollPane(resultadoArea);
+        scroll.setBounds(30, 120, 420, 200);
+        add(scroll);
+    }
+
+    public void actionPerformed(ActionEvent e) {
+        String semana1 = txSemana1.getText().trim();
+        String semana2 = txSemana2.getText().trim();
+
+        if (!semana1.matches("SE[1-5]") || !semana2.matches("SE[1-5]")) {
+            JOptionPane.showMessageDialog(this, "Insira semanas válidas (SE1 a SE5).", "Erro", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        try {
+            String url = "jdbc:mysql://localhost:3306/doencas";
+            String user = "root";
+            String password = "mysql";
+
+            Connection conn = DriverManager.getConnection(url, user, password);
+            Statement stmt = conn.createStatement();
+
+            String query = "SELECT id_municipio, id_doenca, " + semana1 + ", " + semana2 + " FROM casos_semanal";
+            ResultSet rs = stmt.executeQuery(query);
+
+            StringBuilder sb = new StringBuilder();
+            sb.append("Comparação entre ").append(semana1).append(" e ").append(semana2).append(":\n\n");
+
+            while (rs.next()) {
+                int municipio = rs.getInt("id_municipio");
+                int doenca = rs.getInt("id_doenca");
+                int valor1 = rs.getInt(semana1);
+                int valor2 = rs.getInt(semana2);
+
+                String resultado;
+                if (valor1 == 0 && valor2 == 0) {
+                    resultado = "Sem dados";
+                } else if (valor1 == 0) {
+                    resultado = "Aumento infinito (sem casos na semana 1)";
+                } else {
+                    double variacao = ((double) (valor2 - valor1) / valor1) * 100;
+                    resultado = String.format("%.2f%% %s", Math.abs(variacao), variacao >= 0 ? "de aumento" : "de redução");
+                }
+
+                sb.append("Município: ").append(municipio)
+                  .append(" | Doença: ").append(doenca)
+                  .append(" | ").append(resultado).append("\n");
+            }
+
+            resultadoArea.setText(sb.toString());
+
+            rs.close();
+            stmt.close();
+            conn.close();
+        } catch (SQLException ex) {
+            JOptionPane.showMessageDialog(this, "Erro ao acessar banco: " + ex.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
+        }
+    }
 }
